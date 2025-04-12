@@ -9,7 +9,6 @@
       const arrowUp = '^';
       const arrowRight = '>';
       const arrowDown = 'v';
-      const emptySpace = '&#x2022;';
       const wall = '#';
       let gridContainer;
       let nRows;
@@ -26,14 +25,15 @@
       };
       let liveMap;
       let graph;
-      let distValues;
+      let distDisplays;
       let start;
       let goal;
       let delay;
       async function demo() {
          liveMap = [];
          graph = {};
-         distValues = {};
+         distDisplays = {};
+         prevDisplays = {};
          gridContainer = document.querySelector('grid-container');
          let startingMap = document.getElementById('puzzleInput').value;
          startingMap = startingMap.split('\n');
@@ -44,8 +44,10 @@
             let mapRow = [];
             for (let c = 0; c < nCols; c++) {
                let newTile = document.createElement('grid-tile');
-               let newDistValue = document.createElement('dist-val');
-               distValues[[r, c]] = newDistValue;
+               let newDistDisplay = document.createElement('dist-val');
+               let newPrevDisplay = document.createElement('prev-val');
+               distDisplays[[r, c]] = newDistDisplay;
+               prevDisplays[[r, c]] = newPrevDisplay;
                let symbol = startingMap[r][c];
                graph[[r, c]] = symbol;
                if (symbol == 'C') {
@@ -55,21 +57,18 @@
                }
                newTile.className = cssClassLookup[symbol];
                newTile.innerHTML = symbol;
-               newTile.appendChild(newDistValue);
+               newTile.appendChild(newDistDisplay);
+               newTile.appendChild(newPrevDisplay);
                newRow.appendChild(newTile);
                mapRow.push(newTile);
             }
             gridContainer.appendChild(newRow);
             liveMap.push(mapRow);
          }
-         gridContainer.className = undefined;
-         document.querySelector('setup-prompt').className = 'hidden';
-         delay = document.getElementById('animation-delay').value;
          if (!document.getElementById('use-delay').checked) {
             delay = 0;
          }
-         if (delay) await sleep(delay);
-         const [dist, prev] = await dijkstra(liveMap, start, edge_cost);
+         const [dist, prev] = await dijkstra(graph, start, edge_cost);
          let timeTaken = dist[end];
          for (let c = end; c !== undefined; c = prev[c]) {
             let [cr, cc] = c;
@@ -84,6 +83,7 @@
          let [r, c] = start;
          let resultLayer = document.querySelector('result-layer');
          let resultBox = document.querySelector('result-box');
+         resultBox.className = undefined;
          resultLayer.className = undefined;
          resultBox.innerHTML = result;
       };
@@ -94,15 +94,21 @@
          const prev = {};
          for (let r = 0; r < nRows; r++) {
             for (let c = 0; c < nCols; c++) {
-               if (graph[r][c].innerText != wall) {
-                  let rc = [r, c];
+               let rc = [r, c];
+               if (graph[rc] != wall) {
                   Q.push(rc);
                   dist[rc] = Infinity;
+                  distDisplays[rc].innerText = '∞';
+                  prevDisplays[rc].innerText = '∅';
                }
             }
          }
          dist[source] = 0;
-         distValues[source].innerText = 0;
+         distDisplays[source].innerText = 0;
+         gridContainer.className = undefined;
+         document.querySelector('setup-prompt').className = 'hidden';
+         delay = document.getElementById('animation-delay').value;
+         if (delay) await sleep(delay);
          while (Q.length > 0) {
             let u = null;
             let u_index = -1;
@@ -117,10 +123,10 @@
                }
             }
             const [ur, uc] = u;
-            graph[ur][uc].className = 'visited';
+            liveMap[ur][uc].className = 'current';
             Q[u_index] = Q[Q.length - 1];
-            if (delay) await sleep(delay);
             Q.pop();
+            if (delay) await sleep(delay);
             for (let neighbor of neighbors(u)) {
                if (Q.find(e => e[0] == neighbor[0] && e[1] == neighbor[1]) === undefined) {
                   continue;
@@ -130,13 +136,15 @@
                if (alt < dist[neighbor]) {
                   dist[neighbor] = alt;
                   prev[neighbor] = u;
-                  graph[nr][nc].classList.add('neighbor-visit-better');
-                  distValues[neighbor].innerText = alt;
+                  liveMap[nr][nc].className = 'neighbor-visit-better';
+                  distDisplays[neighbor].innerText = alt;
+                  prevDisplays[neighbor].innerText = getPrevSymbol(u, neighbor);
                } else {
-                  graph[nr][nc].classList.add('neighbor-visit-no-better');
+                  liveMap[nr][nc].className = 'neighbor-visit-no-better';
                }
             }
             if (delay) await sleep(delay);
+            liveMap[ur][uc].className = 'visited';
          }
          return [dist, prev];
       }
@@ -210,7 +218,34 @@
          return 1.0;
       }
 
+      function getPrevSymbol(from, to) {
+         const [fr, fc] = from;
+         const [tr, tc] = to;
+         const up = fr > tr;
+         const down = fr < tr;
+         const left = fc > tc;
+         // point in opposite direction
+         if (up) {
+            return '↓';
+         }
+         if (down) {
+            return '↑';
+         }
+         if (left) {
+            return '→';
+         }
+         // right
+         return '←';
+      }
+
       function reset() {
+         let resultBox = document.querySelector('result-box');
+         // hide overlay on first click
+         if (resultBox.className != 'hidden') {
+            resultBox.className = 'hidden';
+            return;
+         }
+         // reset on second
          gridContainer.className = 'hidden';
          gridContainer.innerHTML = '';
          document.querySelector('result-layer').className = 'hidden';
@@ -229,6 +264,7 @@
          background-color: #222;
          border-radius: 6px;
          padding: 6px;
+         font-family: monospace;
       }
 
       html {
@@ -283,16 +319,23 @@
          font-size: 0.75rem;
       }
 
+      grid-tile > prev-val {
+         position: absolute;
+         right: 0.25rem;
+         bottom: 0.2rem;
+         font-size: 0.75rem;
+      }
+
       grid-tile.wall {
          color: black;
-         background-color: #333;
+         background-color: #444;
       }
       grid-tile.empty {
-         color: #222;
+         color: #666;
       }
       grid-tile.conveyer {
          color: yellow;
-         background-color: #330;
+         background-color: #660;
       }
       grid-tile.cora {
          color: orange;
@@ -302,6 +345,13 @@
          color: greenyellow;
          background-color: green;
       }
+      .current {
+         background-color: #41e7e7;
+         color: #0d4c4c;
+      }
+      key-box.current {
+         border-color: #0d4c4c;
+      }
       .visited {
          color: #88f;
          background-color: #008;
@@ -309,18 +359,20 @@
       key-box.visited {
          border-color: #88f;
       }
-      .neighbor-visit-better {
-         background-color: green;
+      grid-tile.neighbor-visit-better, key-box.neighbor-visit-better {
+         color: #0f0; 
+         background-color: #080;
       }
       key-box.neighbor-visit-better {
-         border-color: green;
+         border-color: #0f0;
       }
-      .neighbor-visit-no-better {
-         background-color: red;
+      grid-tile.neighbor-visit-no-better, key-box.neighbor-visit-no-better {
+         background-color: #800;
+         color: #f00;
       }
 
       key-box.neighbor-visit-no-better {
-         border-color: red;
+         border-color: #f00;
       }
 
       .path {
@@ -422,6 +474,7 @@
       <button onclick="demo()">Go!</button>
       <h3>Key</h3>
       <key-list>
+         <key-box class="current"></key-box>u
          <key-box class="visited"></key-box>Removed from Q
          <key-box class="neighbor-visit-better"></key-box>alt &lt; dist[v]
          <key-box class="neighbor-visit-no-better"></key-box>alt &ge; dist[v]
