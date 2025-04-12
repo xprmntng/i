@@ -25,11 +25,15 @@
          'E': 'goal',
       };
       let liveMap;
+      let graph;
+      let distValues;
       let start;
       let goal;
       let delay;
       async function demo() {
          liveMap = [];
+         graph = {};
+         distValues = {};
          gridContainer = document.querySelector('grid-container');
          let startingMap = document.getElementById('puzzleInput').value;
          startingMap = startingMap.split('\n');
@@ -40,7 +44,10 @@
             let mapRow = [];
             for (let c = 0; c < nCols; c++) {
                let newTile = document.createElement('grid-tile');
+               let newDistValue = document.createElement('dist-val');
+               distValues[[r, c]] = newDistValue;
                let symbol = startingMap[r][c];
+               graph[[r, c]] = symbol;
                if (symbol == 'C') {
                   start = [r, c];
                } else if (symbol == 'E') {
@@ -48,6 +55,7 @@
                }
                newTile.className = cssClassLookup[symbol];
                newTile.innerHTML = symbol;
+               newTile.appendChild(newDistValue);
                newRow.appendChild(newTile);
                mapRow.push(newTile);
             }
@@ -66,7 +74,6 @@
          for (let c = end; c !== undefined; c = prev[c]) {
             let [cr, cc] = c;
             let gridElement = liveMap[cr][cc];
-            gridElement.innerText = dist[c];
             gridElement.className = 'path';
          }
          let timeLimit = document.getElementById('timeInput').value;
@@ -95,6 +102,7 @@
             }
          }
          dist[source] = 0;
+         distValues[source].innerText = 0;
          while (Q.length > 0) {
             let u = null;
             let u_index = -1;
@@ -123,6 +131,7 @@
                   dist[neighbor] = alt;
                   prev[neighbor] = u;
                   graph[nr][nc].classList.add('neighbor-visit-better');
+                  distValues[neighbor].innerText = alt;
                } else {
                   graph[nr][nc].classList.add('neighbor-visit-no-better');
                }
@@ -152,12 +161,12 @@
 
       function edge_cost(from, to) {
          const [tr, tc] = to;
-         const toSymbol = liveMap[tr][tc].innerText;
+         const toSymbol = graph[to];
          if (toSymbol == wall) {
             return Infinity;
          }
          const [fr, fc] = from;
-         const fromSymbol = liveMap[fr][fc].innerText;
+         const fromSymbol = graph[from];
          const up = fr > tr;
          const down = fr < tr;
          const left = fc > tc;
@@ -257,6 +266,7 @@
       }
 
       grid-tile {
+         position: relative;
          flex: 1 0;
          background-color: black;
          width: calc(8.33333vmin - 1px);
@@ -265,6 +275,14 @@
          justify-content: center;
          align-items: center;
       }
+
+      grid-tile > dist-val {
+         position: absolute;
+         right: 0.25rem;
+         top: 0.2rem;
+         font-size: 0.75rem;
+      }
+
       grid-tile.wall {
          color: black;
          background-color: #333;
@@ -397,7 +415,7 @@
 #..^.####.v.^.#
 #C.^.#..&lt;&lt;&lt;...#
 ###############</textarea>
-      <h2>Time Alotted</h2>
+      <h2>Time Limit</h2>
       <input type="number" id="timeInput" value="19" required>
       <h2>Animation Delay</h2>
       <li><input type="checkbox" id="use-delay" checked><input type="number" id="animation-delay" value="16">milliseconds</li>
