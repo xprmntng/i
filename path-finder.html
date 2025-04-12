@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <script>
+      // sleep from stackoverflow
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      // const arrowLeft = '&#x2190;';
+      // const arrowUp = '&#x2191;';
+      // const arrowRight = '&#x2192;';
+      // const arrowDown = '&#x2193;';
+      // const emptySpace = '&#x2022;';
+      const arrowLeft = '<';
+      const arrowUp = '^';
+      const arrowRight = '>';
+      const arrowDown = 'v';
+      const emptySpace = '&#x2022;';
+      const wall = '#';
+      let gridContainer;
+      let startingMap =
+`###############
+#..<<<..>>>..E#
+#.###########v#
+#.#..#...>>..v#
+#.#..#.....<<<#
+#.#...>>>.....#
+#.#...........#
+#..^.####.v.^.#
+#..^.<<<<.v.^.#
+#..^.####.v.^.#
+#C.^.#..<<<...#
+###############`;
+      startingMap = startingMap.split('\n');
+      const nRows = startingMap.length;
+      const nCols = startingMap[0].length;
+      cssClassLookup = {
+         '#': 'wall',
+         '>': 'conveyer',
+         '<': 'conveyer',
+         '^': 'conveyer',
+         'v': 'conveyer',
+         '.': 'empty',
+         'C': 'cora',
+         'E': 'goal',
+      };
+      let liveMap = [];
+      let start;
+      let goal;
+      window.onload = async function () {
+         gridContainer = document.querySelector('grid-container');
+         for (let r = 0; r < nRows; r++) {
+            let newRow = document.createElement('grid-row');
+            let mapRow = [];
+            for (let c = 0; c < nCols; c++) {
+               let newTile = document.createElement('grid-tile');
+               let symbol = startingMap[r][c];
+               if (symbol == 'C') {
+                  start = [r, c];
+               } else if (symbol == 'E') {
+                  end = [r, c];
+               }
+               newTile.className = cssClassLookup[symbol];
+               newTile.innerHTML = symbol;
+               newRow.appendChild(newTile);
+               mapRow.push(newTile);
+            }
+            gridContainer.appendChild(newRow);
+            liveMap.push(mapRow);
+         }
+         await sleep(2000);
+         const [dist, prev] = await dijkstra(liveMap, start, edge_cost);
+         for (let c = end; c !== undefined; c = prev[c]) {
+            let [cr, cc] = c;
+            let gridElement = liveMap[cr][cc];
+            gridElement.innerText = dist[c];
+            gridElement.className = 'path';
+         }
+      };
+
+      async function dijkstra(graph, source, edge_cost) {
+         // const Q = new Set();
+         let Q = [];
+         const dist = {};
+         const prev = {};
+         for (let r = 0; r < nRows; r++) {
+            for (let c = 0; c < nCols; c++) {
+               if (graph[r][c].innerText != wall) {
+                  let rc = [r, c];
+                  Q.push(rc);
+                  dist[rc] = Infinity;
+               }
+            }
+         }
+         dist[source] = 0;
+         while (Q.length > 0) {
+            let u = null;
+            let u_index = -1;
+            let dist_u = Infinity;
+            for (let i = 0; i < Q.length; i++) {
+               let pu = Q[i];
+               let dist_pu = dist[pu];
+               if (dist_pu < dist_u) {
+                  u = pu;
+                  dist_u = dist_pu;
+                  u_index = i;
+               }
+            }
+            const [ur, uc] = u;
+            graph[ur][uc].className = 'visited';
+            Q[u_index] = Q[Q.length - 1];
+            await sleep(250);
+            Q.pop();
+            for (let neighbor of neighbors(u)) {
+               if (Q.find(e => e[0] == neighbor[0] && e[1] == neighbor[1]) === undefined) {
+                  continue;
+               }
+               let alt = dist_u + edge_cost(u, neighbor);
+               const [nr, nc] = neighbor;
+               if (alt < dist[neighbor]) {
+                  dist[neighbor] = alt;
+                  prev[neighbor] = u;
+                  graph[nr][nc].classList.add('neighbor-visit-better');
+               } else {
+                  graph[nr][nc].classList.add('neighbor-visit-no-better');
+               }
+            }
+            await sleep(250);
+         }
+         return [dist, prev];
+      }
+
+      function neighbors(from) {
+         const [fr, fc] = from;
+         const options = [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1]
+         ];
+         for (option of options) {
+            let [tr, tc] = option;
+            tr += fr;
+            tc += fc;
+            option[0] = tr;
+            option[1] = tc;
+         }
+         return options;
+      }
+
+      function edge_cost(from, to) {
+         const [tr, tc] = to;
+         const toSymbol = liveMap[tr][tc].innerText;
+         if (toSymbol == wall) {
+            return Infinity;
+         }
+         const [fr, fc] = from;
+         const fromSymbol = liveMap[fr][fc].innerText;
+         console.log(fromSymbol);
+         const up = fr > tr;
+         const down = fr < tr;
+         const left = fc > tc;
+         const right = fc < tc;
+         if (fromSymbol == arrowUp) {
+            if (up) {
+               return 0.5;
+            }
+            if (down) {
+               return 2.0;
+            }
+            return 1.0;
+         }
+         if (fromSymbol == arrowDown) {
+            if (down) {
+               return 0.5;
+            }
+            if (up) {
+               return 2.0;
+            }
+            return 1.0;
+         }
+         if (fromSymbol == arrowLeft) {
+            if (left) {
+               return 0.5;
+            }
+            if (right) {
+               return 2.0;
+            }
+            return 1.0;
+         }
+         if (fromSymbol == arrowRight) {
+            if (right) {
+               return 0.5;
+            }
+            if (left) {
+               return 2.0;
+            }
+            return 1.0;
+         }
+         return 1.0;
+      }
+   </script>
+   <style>
+      *:not(head) {
+         all: unset;
+         user-select: none;
+      }
+
+      html,
+      body {
+         height: 100vh;
+         width: 100vw;
+         background-color: #111;
+      }
+
+      body {
+         display: flex;
+         flex-direction: row;
+         justify-content: center;
+         color: white;
+         font-family: sans-serif;
+         font-size: 3vh;
+      }
+
+      grid-container {
+         /* height: 100vmin; */
+         /* width: 100vmin; */
+         display: flex;
+         flex-direction: column;
+         gap: 1px;
+         background-color: black;
+      }
+
+      grid-row {
+         flex-direction: row;
+         display: flex;
+         gap: 1px;
+      }
+
+      grid-tile {
+         flex: 1 0;
+         background-color: black;
+         width: calc(8.33333vmin - 1px);
+         height: calc(8.33333vmin - 1px);
+         display: flex;
+         justify-content: center;
+         align-items: center;
+      }
+      grid-tile.wall {
+         color: black;
+         background-color: #333;
+      }
+      grid-tile.empty {
+         color: #222;
+      }
+      grid-tile.conveyer {
+         color: yellow;
+         background-color: #330;
+      }
+      grid-tile.cora {
+         color: orange;
+         background-color: #310;
+      }
+      grid-tile.goal {
+         color: greenyellow;
+         background-color: green;
+      }
+      grid-tile.visited {
+         color: #88f;
+         background-color: #008;
+      }
+      grid-tile.neighbor-visit-better {
+         background-color: green;
+      }
+
+      grid-tile.neighbor-visit-no-better {
+         background-color: red;
+      }
+
+      grid-tile.path {
+         background-color: #dc8c02;
+         color: black;
+      }
+   </style>
+</head>
+
+<body>
+   <grid-container></grid-container>
+</body>
+
+</html>
