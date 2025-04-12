@@ -10,6 +10,7 @@
       const arrowRight = '>';
       const arrowDown = 'v';
       const wall = '#';
+      const flashLength = 60;
       let gridContainer;
       let nRows;
       let nCols;
@@ -65,6 +66,7 @@
             gridContainer.appendChild(newRow);
             liveMap.push(mapRow);
          }
+         delay = document.getElementById('animation-delay').value;
          if (!document.getElementById('use-delay').checked) {
             delay = 0;
          }
@@ -92,6 +94,8 @@
          let Q = [];
          const dist = {};
          const prev = {};
+         let beforeFlashDelay = Math.max(delay - flashLength, 0);
+         let flash = Math.min(flashLength, delay);
          for (let r = 0; r < nRows; r++) {
             for (let c = 0; c < nCols; c++) {
                let rc = [r, c];
@@ -133,6 +137,9 @@
                }
                let alt = dist_u + edge_cost(u, neighbor);
                const [nr, nc] = neighbor;
+               let existingClassName = liveMap[nr][nc].className;
+               liveMap[nr][nc].className = 'visited-neighbor';
+               if (beforeFlashDelay) await sleep(beforeFlashDelay);
                if (alt < dist[neighbor]) {
                   dist[neighbor] = alt;
                   prev[neighbor] = u;
@@ -142,8 +149,9 @@
                } else {
                   liveMap[nr][nc].className = 'neighbor-visit-no-better';
                }
+               if (delay) await sleep(flashLength);
+               liveMap[nr][nc].className = existingClassName;
             }
-            if (delay) await sleep(delay);
             liveMap[ur][uc].className = 'visited';
          }
          return [dist, prev];
@@ -264,7 +272,15 @@
          background-color: #222;
          border-radius: 6px;
          padding: 6px;
+      }
+
+      textarea, input {
          font-family: monospace;
+      }
+
+      button:hover {
+         background-color: #333;
+         border-color: #444;
       }
 
       html {
@@ -335,7 +351,7 @@
       }
       grid-tile.conveyer {
          color: yellow;
-         background-color: #660;
+         background-color: #550;
       }
       grid-tile.cora {
          color: orange;
@@ -358,6 +374,13 @@
       }
       key-box.visited {
          border-color: #88f;
+      }
+      .visited-neighbor {
+         color: #fff;
+         background-color: #aaa;
+      }
+      key-box.visited-neighbor {
+         border-color: #fff;
       }
       grid-tile.neighbor-visit-better, key-box.neighbor-visit-better {
          color: #0f0; 
@@ -475,6 +498,7 @@
       <h3>Key</h3>
       <key-list>
          <key-box class="current"></key-box>u
+         <key-box class="visited-neighbor"></key-box>v
          <key-box class="visited"></key-box>Removed from Q
          <key-box class="neighbor-visit-better"></key-box>alt &lt; dist[v]
          <key-box class="neighbor-visit-no-better"></key-box>alt &ge; dist[v]
