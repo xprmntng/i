@@ -4,11 +4,6 @@
    <script>
       // sleep from stackoverflow
       const sleep = ms => new Promise(r => setTimeout(r, ms));
-      // const arrowLeft = '&#x2190;';
-      // const arrowUp = '&#x2191;';
-      // const arrowRight = '&#x2192;';
-      // const arrowDown = '&#x2193;';
-      // const emptySpace = '&#x2022;';
       const arrowLeft = '<';
       const arrowUp = '^';
       const arrowRight = '>';
@@ -16,22 +11,8 @@
       const emptySpace = '&#x2022;';
       const wall = '#';
       let gridContainer;
-      let startingMap =
-`###############
-#..<<<..>>>..E#
-#.###########v#
-#.#..#...>>..v#
-#.#..#.....<<<#
-#.#...>>>.....#
-#.#...........#
-#..^.####.v.^.#
-#..^.<<<<.v.^.#
-#..^.####.v.^.#
-#C.^.#..<<<...#
-###############`;
-      startingMap = startingMap.split('\n');
-      const nRows = startingMap.length;
-      const nCols = startingMap[0].length;
+      let nRows;
+      let nCols;
       cssClassLookup = {
          '#': 'wall',
          '>': 'conveyer',
@@ -42,11 +23,17 @@
          'C': 'cora',
          'E': 'goal',
       };
-      let liveMap = [];
+      let liveMap;
       let start;
       let goal;
-      window.onload = async function () {
+      let delay;
+      async function demo() {
+         liveMap = [];
          gridContainer = document.querySelector('grid-container');
+         let startingMap = document.getElementById('puzzleInput').value;
+         startingMap = startingMap.split('\n');
+         nRows = startingMap.length;
+         nCols = startingMap[0].length;
          for (let r = 0; r < nRows; r++) {
             let newRow = document.createElement('grid-row');
             let mapRow = [];
@@ -66,18 +53,34 @@
             gridContainer.appendChild(newRow);
             liveMap.push(mapRow);
          }
-         await sleep(2000);
+         gridContainer.className = undefined;
+         document.querySelector('setup-prompt').className = 'hidden';
+         delay = document.getElementById('animation-delay').value;
+         if (!document.getElementById('use-delay').checked) {
+            delay = 0;
+         }
+         if (delay) await sleep(delay);
          const [dist, prev] = await dijkstra(liveMap, start, edge_cost);
+         let timeTaken = dist[end];
          for (let c = end; c !== undefined; c = prev[c]) {
             let [cr, cc] = c;
             let gridElement = liveMap[cr][cc];
             gridElement.innerText = dist[c];
             gridElement.className = 'path';
          }
+         let timeLimit = document.getElementById('timeInput').value;
+         let result = 'CORA makes it<br>😊';
+         if (timeTaken >= timeLimit) {
+            result = 'CORA does not make it<br>😭';
+         }
+         let [r, c] = start;
+         let resultLayer = document.querySelector('result-layer');
+         let resultBox = document.querySelector('result-box');
+         resultLayer.className = undefined;
+         resultBox.innerHTML = result;
       };
 
       async function dijkstra(graph, source, edge_cost) {
-         // const Q = new Set();
          let Q = [];
          const dist = {};
          const prev = {};
@@ -107,7 +110,7 @@
             const [ur, uc] = u;
             graph[ur][uc].className = 'visited';
             Q[u_index] = Q[Q.length - 1];
-            await sleep(250);
+            if (delay) await sleep(delay);
             Q.pop();
             for (let neighbor of neighbors(u)) {
                if (Q.find(e => e[0] == neighbor[0] && e[1] == neighbor[1]) === undefined) {
@@ -123,7 +126,7 @@
                   graph[nr][nc].classList.add('neighbor-visit-no-better');
                }
             }
-            await sleep(250);
+            if (delay) await sleep(delay);
          }
          return [dist, prev];
       }
@@ -154,7 +157,6 @@
          }
          const [fr, fc] = from;
          const fromSymbol = liveMap[fr][fc].innerText;
-         console.log(fromSymbol);
          const up = fr > tr;
          const down = fr < tr;
          const left = fc > tc;
@@ -197,11 +199,26 @@
          }
          return 1.0;
       }
+
+      function reset() {
+         gridContainer.className = 'hidden';
+         gridContainer.innerHTML = '';
+         document.querySelector('result-layer').className = 'hidden';
+         document.querySelector('setup-prompt').className = 'undefined';
+      }
    </script>
    <style>
-      *:not(head) {
+      *:not(head, textarea, input, button) {
          all: unset;
          user-select: none;
+      }
+
+      textarea, input, button {
+         border: 1px solid #333;
+         color: #ddd;
+         background-color: #222;
+         border-radius: 6px;
+         padding: 6px;
       }
 
       html,
@@ -212,17 +229,17 @@
       }
 
       body {
+         position: relative;
          display: flex;
          flex-direction: row;
          justify-content: center;
+         align-items: center;
          color: white;
          font-family: sans-serif;
          font-size: 3vh;
       }
 
       grid-container {
-         /* height: 100vmin; */
-         /* width: 100vmin; */
          display: flex;
          flex-direction: column;
          gap: 1px;
@@ -279,11 +296,74 @@
          background-color: #dc8c02;
          color: black;
       }
+      .hidden {
+         display: none;
+      }
+      setup-prompt {
+         width: 80vmin;
+         height: 80vmin;
+         display: flex;
+         flex-direction: column;
+         gap: 1rem;
+      }
+
+      h1 {
+         font-size: 1.2rem;
+         text-align: center;
+      }
+      li {
+         gap: 1rem;
+         display: flex;
+         flex-direction: row;
+         align-items: center;
+      }
+      li > input[type=number] {
+         flex: 1 0 0;
+      }
+      result-layer {
+         position: absolute;
+         z-index: 1;
+         width: 100vw;
+         height: 100vh;
+         top: 0;
+         left: 0;
+         display: flex;
+         justify-content: center;
+         align-items: center;
+      }
+      result-box {
+         background-color: rgba(0, 0, 0, 0.4);
+         text-align: center;
+         font-size: 10vmin;
+         border-radius: 1rem;
+         padding: 1rem;
+      }
    </style>
 </head>
 
 <body>
-   <grid-container></grid-container>
+   <setup-prompt>
+      <h1>Dijkstra's Demo</h1>
+      <h2>Puzzle Input</h2>
+      <textarea id="puzzleInput" rows="12" required>###############
+#..&lt;&lt;&lt;..&gt;&gt;&gt;..E#
+#.###########v#
+#.#..#...&gt;&gt;..v#
+#.#..#.....&lt;&lt;&lt;#
+#.#...&gt;&gt;&gt;.....#
+#.#...........#
+#..^.####.v.^.#
+#..^.&lt;&lt;&lt;&lt;.v.^.#
+#..^.####.v.^.#
+#C.^.#..&lt;&lt;&lt;...#
+###############</textarea>
+      <h2>Time alotted</h2>
+      <input type="number" id="timeInput" value="19" required>
+      <h2>Animation delay</h2>
+      <li><input type="checkbox" id="use-delay" checkbox><input type="number" id="animation-delay" value="16">milliseconds</li>
+      <button onclick="demo()">Go!</button>
+   </setup-prompt>
+   <grid-container class="hidden"></grid-container>
+   <result-layer class="hidden" onclick="reset()"><result-box></result-box></result-layer>
 </body>
-
 </html>
