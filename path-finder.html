@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+   <title>Dijkstra's Algorithm</title>
    <script>
       // sleep from stackoverflow
       const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -221,6 +222,10 @@
          padding: 6px;
       }
 
+      html {
+         font-size: 2vh;
+      }
+
       html,
       body {
          height: 100vh;
@@ -236,7 +241,6 @@
          align-items: center;
          color: white;
          font-family: sans-serif;
-         font-size: 3vh;
       }
 
       grid-container {
@@ -280,19 +284,28 @@
          color: greenyellow;
          background-color: green;
       }
-      grid-tile.visited {
+      .visited {
          color: #88f;
          background-color: #008;
       }
-      grid-tile.neighbor-visit-better {
+      key-box.visited {
+         border-color: #88f;
+      }
+      .neighbor-visit-better {
          background-color: green;
       }
-
-      grid-tile.neighbor-visit-no-better {
+      key-box.neighbor-visit-better {
+         border-color: green;
+      }
+      .neighbor-visit-no-better {
          background-color: red;
       }
 
-      grid-tile.path {
+      key-box.neighbor-visit-no-better {
+         border-color: red;
+      }
+
+      .path {
          background-color: #dc8c02;
          color: black;
       }
@@ -310,6 +323,12 @@
       h1 {
          font-size: 1.2rem;
          text-align: center;
+      }
+      h2 {
+         font-size: 1rem;
+      }
+      h3 {
+         font-size: 0.8rem;
       }
       li {
          gap: 1rem;
@@ -338,12 +357,31 @@
          border-radius: 1rem;
          padding: 1rem;
       }
+      key-list {
+         width: 100%;
+         display: flex;
+         flex-direction: row;
+         align-items: center;
+         font-size: 16px;
+      }
+
+      key-box {
+         width: 16px;
+         height: 16px;
+         border-width: 1px;
+         border-style: solid;
+         margin-right: 0.5rem;
+      }
+      key-box + key-box {
+         margin-left: 1rem;
+      }
+
    </style>
 </head>
 
 <body>
    <setup-prompt>
-      <h1>Dijkstra's Demo</h1>
+      <h1>Dijkstra's Algorithm <a href="https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm" target="_blank">🔗</a></h1>
       <h2>Puzzle Input</h2>
       <textarea id="puzzleInput" rows="12" required>###############
 #..&lt;&lt;&lt;..&gt;&gt;&gt;..E#
@@ -362,6 +400,13 @@
       <h2>Animation delay</h2>
       <li><input type="checkbox" id="use-delay" checkbox><input type="number" id="animation-delay" value="16">milliseconds</li>
       <button onclick="demo()">Go!</button>
+      <h3>Key</h3>
+      <key-list>
+         <key-box class="visited"></key-box>Removed from Q
+         <key-box class="neighbor-visit-better"></key-box>alt &lt; dist[v]
+         <key-box class="neighbor-visit-no-better"></key-box>alt &ge; dist[v]
+         <key-box class="path"></key-box>Quickest Path
+      </key-list>
    </setup-prompt>
    <grid-container class="hidden"></grid-container>
    <result-layer class="hidden" onclick="reset()"><result-box></result-box></result-layer>
