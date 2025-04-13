@@ -79,7 +79,7 @@
          }
          let timeLimit = document.getElementById('timeInput').value;
          let result = 'CORA makes it<br>😊';
-         if (timeTaken >= timeLimit) {
+         if (timeTaken > timeLimit) {
             result = 'CORA does not make it<br>😭';
          }
          let [r, c] = start;
