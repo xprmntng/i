@@ -111,7 +111,6 @@
          distDisplays[source].innerText = 0;
          gridContainer.className = undefined;
          document.querySelector('setup-prompt').className = 'hidden';
-         delay = document.getElementById('animation-delay').value;
          if (delay) await sleep(delay);
          while (Q.length > 0) {
             let u = null;
